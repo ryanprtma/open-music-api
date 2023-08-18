@@ -30,6 +30,10 @@ const CollaborationsValidator = require('./validator/collaborations');
 
 const ActivitiesService = require('./services/activities/activitiesService');
 
+const _exports = require('./api/exports');
+const ProducerService = require('./services/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
 const ClientError = require('./exceptions/ClientError');
 
 const init = async () => {
@@ -125,6 +129,15 @@ const init = async () => {
       collaborationsService,
       playlistsService,
       validator: CollaborationsValidator,
+    },
+  });
+
+  await server.register({
+    plugin: _exports,
+    options: {
+      service: ProducerService,
+      playlistsService,
+      validator: ExportsValidator,
     },
   });
 
