@@ -17,11 +17,11 @@ class ExportsHandler {
     await this._playlistsService.verifyPlaylistAccess(id, request.auth.credentials.id);
     const message = {
       userId: request.auth.credentials.id,
-      playListId: id,
+      playlistId: id,
       targetEmail: request.payload.targetEmail,
     };
 
-    await this._service.sendMessage(`export:playlist-${id}`, JSON.stringify(message));
+    await this._service.sendMessage('export:playlist', JSON.stringify(message));
 
     const response = h.response({
       status: 'success',
