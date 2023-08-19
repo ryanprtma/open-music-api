@@ -107,7 +107,7 @@ class AlbumsService {
         throw new NotFoundError('Album tidak ditemukan');
       }
 
-      await this._cacheService.set(`album-likes:${id}`, JSON.stringify(parseInt(result.rows[0].like_count, number)));
+      await this._cacheService.set(`album-likes:${id}`, JSON.stringify(parseInt(result.rows[0].like_count, number)), 1800);
 
       return { isCached: false, data: parseInt(result.rows[0].like_count, number) };
     }
