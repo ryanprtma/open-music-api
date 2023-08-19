@@ -6,8 +6,9 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModel } = require('../../utils/albums');
 
 class AlbumsService {
-  constructor() {
+  constructor(cacheService) {
     this._pool = new Pool();
+    this._cacheService = cacheService;
   }
 
   async addAlbum({ name, year }) {
@@ -92,19 +93,24 @@ class AlbumsService {
   }
 
   async getAlbumLikeCountById(id) {
-    const query = {
-      text: 'SELECT COUNT(*) AS like_count FROM user_album_likes WHERE album_id = $1',
-      values: [id],
-    };
-    const result = await this._pool.query(query);
+    try {
+      const result = await this._cacheService.get(`album-likes:${id}`);
+      return { isCached: true, data: JSON.parse(result) };
+    } catch (error) {
+      const query = {
+        text: 'SELECT COUNT(*) AS like_count FROM user_album_likes WHERE album_id = $1',
+        values: [id],
+      };
+      const result = await this._pool.query(query);
 
-    console.log(result.rows[0].like_count);
+      if (!result.rows.length) {
+        throw new NotFoundError('Album tidak ditemukan');
+      }
 
-    if (!result.rows.length) {
-      throw new NotFoundError('Album tidak ditemukan');
+      await this._cacheService.set(`album-likes:${id}`, JSON.stringify(parseInt(result.rows[0].like_count, number)));
+
+      return { isCached: false, data: parseInt(result.rows[0].like_count, number) };
     }
-
-    return parseInt(result.rows[0].like_count, number);
   }
 
   async addAlbumLikeById(albumId, userId) {
@@ -125,13 +131,15 @@ class AlbumsService {
       throw new InvariantError('Gagal menyukai album');
     }
 
+    await this._cacheService.delete(`album-likes:${albumId}`);
+
     return result.rows[0].id;
   }
 
-  async deleteAlbumLikeById(album_id, userId) {
+  async deleteAlbumLikeById(albumId, userId) {
     const query = {
       text: 'DELETE FROM user_album_likes WHERE user_id = $1 and album_id = $2 RETURNING id',
-      values: [userId, album_id],
+      values: [userId, albumId],
     };
 
     const result = await this._pool.query(query);
@@ -139,6 +147,8 @@ class AlbumsService {
     if (!result.rows.length) {
       throw new NotFoundError('Gagal batal menyukai album. Id tidak ditemukan');
     }
+
+    await this._cacheService.delete(`album-likes:${albumId}`);
 
     return result.rows[0].id;
   }
