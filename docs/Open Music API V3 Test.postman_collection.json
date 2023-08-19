@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "01e0b592-6700-4047-abb8-40d54196efad",
+		"_postman_id": "79ae887d-4ffa-46e0-84ea-430a3d974a38",
 		"name": "Open Music API V3 Test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "12297972"
+		"_exporter_id": "19074372"
 	},
 	"item": [
 		{
@@ -8493,7 +8493,7 @@
 								{
 									"key": "cover",
 									"type": "file",
-									"src": []
+									"src": "/home/ryan/Desktop/Working Area/dicoding/backend intermediate/open-music-api/docs/text-small.txt"
 								}
 							]
 						},
@@ -8547,7 +8547,7 @@
 								{
 									"key": "cover",
 									"type": "file",
-									"src": []
+									"src": "/home/ryan/Desktop/Working Area/dicoding/backend intermediate/open-music-api/docs/picture-large.jpg"
 								}
 							]
 						},
@@ -8608,7 +8608,7 @@
 								{
 									"key": "cover",
 									"type": "file",
-									"src": "mGHcq0kx6/picture-small.jpg"
+									"src": "/home/ryan/Desktop/Working Area/dicoding/backend intermediate/open-music-api/docs/picture-small.jpg"
 								}
 							]
 						},
