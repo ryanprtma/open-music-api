@@ -2,6 +2,9 @@ require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
+const path = require('path');
+const Inert = require('@hapi/inert');
+const config = require('./utils/config');
 
 const albums = require('./api/albums');
 const AlbumsService = require('./services/albums/AlbumsService');
@@ -30,23 +33,38 @@ const CollaborationsValidator = require('./validator/collaborations');
 
 const ActivitiesService = require('./services/activities/activitiesService');
 
+const _exports = require('./api/exports');
+const ProducerService = require('./services/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
+const uploads = require('./api/uploads');
+const StorageService = require('./services/storage/StorageService');
+const UploadsValidator = require('./validator/uploads');
+
+const CacheService = require('./services/redis/CacheService');
+
 const ClientError = require('./exceptions/ClientError');
 
 const init = async () => {
+  const cacheService = new CacheService();
+
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
 
   const activitiesService = new ActivitiesService();
   const collaborationsService = new CollaborationsService(usersService);
-  const albumsService = new AlbumsService();
+  const albumsService = new AlbumsService(cacheService);
   const songsService = new SongsService();
   const playlistsService = new PlaylistsService(
     collaborationsService, activitiesService, songsService,
   );
 
+  const globalDir = 'api/uploads/file/images';
+  const albumDir = '../src/assets/album/cover/images';
+
   const server = Hapi.server({
-    port: process.env.PORT,
-    host: process.env.HOST,
+    port: config.app.port,
+    host: config.app.host,
     routes: {
       cors: {
         origin: ['*'],
@@ -57,6 +75,9 @@ const init = async () => {
   await server.register([
     {
       plugin: Jwt,
+    },
+    {
+      plugin: Inert,
     },
   ]);
 
@@ -81,6 +102,8 @@ const init = async () => {
     options: {
       albumsService,
       songsService,
+      storageService: new StorageService(path.resolve(__dirname, albumDir)),
+      uploadsValidator: UploadsValidator,
       validator: AlbumsValidator,
     },
   });
@@ -125,6 +148,23 @@ const init = async () => {
       collaborationsService,
       playlistsService,
       validator: CollaborationsValidator,
+    },
+  });
+
+  await server.register({
+    plugin: _exports,
+    options: {
+      service: ProducerService,
+      playlistsService,
+      validator: ExportsValidator,
+    },
+  });
+
+  await server.register({
+    plugin: uploads,
+    options: {
+      service: new StorageService(path.resolve(__dirname, globalDir)),
+      validator: UploadsValidator,
     },
   });
 

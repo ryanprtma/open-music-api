@@ -2,10 +2,12 @@ const autoBind = require('auto-bind');
 const NotFoundError = require('../../exceptions/NotFoundError');
 
 class AlbumsHandler {
-  constructor(albumsService, songsService, validator) {
+  constructor(albumsService, songsService, storageService, validator, uploadsValidator) {
     this._albumsService = albumsService;
     this._songsService = songsService;
+    this._storageService = storageService;
     this._validator = validator;
+    this._uploadsValidator = uploadsValidator;
 
     autoBind(this);
   }
@@ -79,6 +81,70 @@ class AlbumsHandler {
     return {
       status: 'success',
       message: 'Album berhasil dihapus',
+    };
+  }
+
+  async postUploadAlbumCoverImageHandler(request, h) {
+    const { id } = request.params;
+    const { cover } = request.payload;
+    this._uploadsValidator.validateImageHeaders(cover.hapi.headers);
+
+    const filename = await this._storageService.writeFile(cover, cover.hapi);
+
+    const fileLocation = `http://${process.env.HOST}:${process.env.PORT}/assets/album/cover/images/${filename}`;
+
+    await this._albumsService.addAlbumCoverUrlById(id, fileLocation);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Sampul berhasil diunggah',
+    });
+
+    response.code(201);
+    return response;
+  }
+
+  async getAlbumLikeCountHandler(request, h) {
+    const { id } = request.params;
+    const { isCached, data } = await this._albumsService.getAlbumLikeCountById(id);
+
+    const response = h.response({
+      status: 'success',
+      data: {
+        likes: data,
+      },
+    });
+
+    if (isCached) {
+      response.header('X-Data-Source', 'cache');
+    }
+    return response;
+  }
+
+  async postAlbumLikeByIdHandler(request, h) {
+    const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._albumsService.getAlbumById(id);
+    await this._albumsService.addAlbumLikeById(id, credentialId);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Success Like Album!',
+    });
+    response.code(201);
+
+    return response;
+  }
+
+  async deleteAlbumLikeByIdHandler(request) {
+    const { id } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+    await this._albumsService.deleteAlbumLikeById(id, credentialId);
+
+    return {
+      status: 'success',
+      message: 'Success Unlike Album!',
     };
   }
 }
