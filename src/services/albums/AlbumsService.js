@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const { nanoid } = require('nanoid');
+const { number } = require('joi');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModel } = require('../../utils/albums');
@@ -88,6 +89,71 @@ class AlbumsService {
     }
 
     return result.rows[0].url_cover;
+  }
+
+  async getAlbumLikeCountById(id) {
+    const query = {
+      text: 'SELECT COUNT(*) AS like_count FROM user_album_likes WHERE album_id = $1',
+      values: [id],
+    };
+    const result = await this._pool.query(query);
+
+    console.log(result.rows[0].like_count);
+
+    if (!result.rows.length) {
+      throw new NotFoundError('Album tidak ditemukan');
+    }
+
+    return parseInt(result.rows[0].like_count, number);
+  }
+
+  async addAlbumLikeById(albumId, userId) {
+    await this.verifyAlbumLike(albumId, userId);
+
+    const id = `album-${nanoid(16)}`;
+    const createdAt = new Date().toISOString();
+    const updatedAt = createdAt;
+
+    const query = {
+      text: 'INSERT INTO user_album_likes VALUES($1, $2, $3, $4, $5) RETURNING id',
+      values: [id, userId, albumId, createdAt, updatedAt],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows[0].id) {
+      throw new InvariantError('Gagal menyukai album');
+    }
+
+    return result.rows[0].id;
+  }
+
+  async deleteAlbumLikeById(album_id, userId) {
+    const query = {
+      text: 'DELETE FROM user_album_likes WHERE user_id = $1 and album_id = $2 RETURNING id',
+      values: [userId, album_id],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (!result.rows.length) {
+      throw new NotFoundError('Gagal batal menyukai album. Id tidak ditemukan');
+    }
+
+    return result.rows[0].id;
+  }
+
+  async verifyAlbumLike(albumId, userId) {
+    const query = {
+      text: 'SELECT * FROM user_album_likes WHERE user_id = $1 and album_id = $2',
+      values: [userId, albumId],
+    };
+
+    const result = await this._pool.query(query);
+
+    if (result.rows.length > 0) {
+      throw new InvariantError('User Tidak Boleh Meyukai Album Lebih Dari Satu Kali!');
+    }
   }
 }
 
